@@ -1,0 +1,69 @@
+---
+title: "Instalación y entornos"
+description: "Cómo ejecutar Sistema Preguntados en desarrollo: comandos npm, backend FastAPI, migraciones con Alembic, proxy de Vite, VITE_API_URL y acceso desde la red local."
+---
+
+Sistema Preguntados tiene dos partes que ejecutas por separado: el frontend React con Vite y el backend FastAPI con PostgreSQL.
+
+## Requisitos previos
+
+- Node.js y npm, para el frontend.
+- Python, para el backend FastAPI.
+- Una base de datos PostgreSQL accesible desde el backend.
+
+## Frontend
+
+Ejecuta estos comandos en la carpeta del frontend:
+
+| Comando | Propósito |
+| --- | --- |
+| `npm install` | Instala las dependencias |
+| `npm run dev` | Inicia el servidor de desarrollo de Vite en `http://localhost:3000` |
+| `npx tsc --noEmit` | Verifica los tipos de TypeScript sin generar archivos |
+| `npm test` | Ejecuta las pruebas con Vitest (`vitest run`) |
+| `npm run build` | Compila la aplicación para producción |
+
+## Backend
+
+Ejecuta estos comandos en la carpeta del backend:
+
+| Comando | Propósito |
+| --- | --- |
+| `alembic upgrade head` | Aplica las migraciones pendientes sobre PostgreSQL |
+| `uvicorn app.main:app --reload` | Inicia FastAPI en el puerto 8000 con recarga automática |
+
+Si el backend no está disponible, el frontend sigue funcionando con preguntas locales. Consulta [Arquitectura](/arquitectura) para ver cómo funciona el modo offline.
+
+## Entorno de desarrollo
+
+El servidor de Vite escucha en el puerto 3000. `vite.config.ts` define un proxy que redirige las peticiones a `/questions` hacia `http://localhost:8000`. Así, el navegador trata al backend como si fuera el mismo origen y evitas las restricciones de CORS durante el desarrollo.
+
+```typescript
+export default defineConfig({
+  server: {
+    port: 3000,
+    proxy: {
+      '/questions': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
+});
+```
+
+## Variables de entorno
+
+El frontend lee la URL del backend de estas variables de Vite:
+
+| Variable | Descripción |
+| --- | --- |
+| `VITE_API_URL` | URL base de la API FastAPI |
+| `VITE_API_BASE_URL` | URL base de la API FastAPI (alternativa) |
+
+Si no defines ninguna, el cliente usa `http://localhost:8000`. En producción, define una de estas variables con la dirección de tu backend.
+
+## Acceso desde la red local
+
+Para jugar en modo online entre dos dispositivos de la misma red, el backend acepta peticiones desde direcciones `192.168.x.x`. La política CORS de FastAPI usa una expresión regular que admite `localhost`, `127.0.0.1` y los rangos de red local. Consulta [API REST](/api-rest#cors) para ver la política completa.

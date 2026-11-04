@@ -1,0 +1,33 @@
+---
+title: "Modos de juego"
+description: "Cómo se juega Sistema Preguntados en modo local, en un mismo dispositivo, y en modo online, entre dos dispositivos con un código de sala."
+---
+
+Sistema Preguntados ofrece dos modalidades: el modo local, para dos jugadores en el mismo dispositivo, y el modo online, para dos jugadores en dispositivos distintos.
+
+## Modo local (mismo dispositivo)
+
+En el modo local, dos jugadores comparten la misma pantalla y juegan por turnos.
+
+1. Cada jugador configura su nombre y su avatar en la pantalla de configuración.
+2. El jugador en turno gira la ruleta. La ruleta determina una de las seis categorías temáticas (Historia, Geografía, Ciencia, Arte, Deportes y Entretenimiento) o una casilla especial de **Corona**.
+3. El jugador responde la pregunta de la categoría. Si acierta, conserva el turno. Si falla, el turno pasa al oponente.
+4. Los jugadores acumulan coronas por categoría temática.
+
+Cuando la ruleta cae en la casilla de **Corona**, o cuando el jugador alcanza tres aciertos sucesivos, el juego pasa a la configuración de un duelo. En el duelo, los jugadores se enfrentan con preguntas rápidas para desempatar o para robar una corona.
+
+## Modo online (dos dispositivos)
+
+En el modo online, cada jugador usa su propio dispositivo y el backend coordina la partida.
+
+1. El anfitrión crea una sala. El sistema genera un código alfanumérico aleatorio de 6 caracteres.
+2. El anfitrión comparte el código con el segundo jugador, que lo usa para unirse a la sala.
+3. Ambos jugadores esperan en la sala de espera. El cliente consulta periódicamente el estado de la sala (polling) hasta que la partida pasa a estar activa.
+4. Los jugadores responden por turnos. El backend valida cada respuesta, actualiza los puntajes y cambia el turno.
+5. Al completar el número de preguntas del duelo, la pantalla de resultados muestra el puntaje final y el ganador.
+
+<Note>
+  El jugador que responde ve el resultado de inmediato. El oponente ve el avance en el siguiente ciclo de polling. Para más detalles del flujo, consulta [Arquitectura](/arquitectura).
+</Note>
+
+Para jugar en modo online entre dos dispositivos de la misma red local, consulta [Acceso desde la red local](/instalacion#acceso-desde-la-red-local).
