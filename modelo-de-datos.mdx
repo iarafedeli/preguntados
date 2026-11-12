@@ -1,0 +1,58 @@
+---
+title: "Modelo de datos"
+description: "Tablas de PostgreSQL de Sistema Preguntados: questions, categorizations y duel_rooms, modeladas con SQLAlchemy y versionadas con Alembic."
+---
+
+El backend persiste los datos en PostgreSQL mediante el ORM SQLAlchemy. Alembic controla el versionado del esquema. El modelo tiene tres tablas.
+
+## questions
+
+Banco central de preguntas.
+
+| Columna | Tipo | Descripción |
+| --- | --- | --- |
+| `id` | Integer, clave primaria, autoincremental | Identificador de la pregunta |
+| `question` | Text | Enunciado de la pregunta |
+| `answer` | Text | Texto de la respuesta correcta |
+| `option_1` a `option_4` | Text | Las cuatro opciones, incluida la respuesta correcta |
+| `category` | String, indexada | Categoría temática |
+| `source` | String | Origen de la pregunta |
+
+## categorizations
+
+Registro de la clasificación de cada pregunta, manual o automática. Cada pregunta puede tener varias categorizaciones.
+
+| Columna | Tipo | Descripción |
+| --- | --- | --- |
+| `id` | Integer, clave primaria, autoincremental | Identificador de la categorización |
+| `question_id` | Integer, clave foránea a `questions.id` | Pregunta clasificada. Se elimina en cascada (`ON DELETE CASCADE`) |
+| `category_name` | String | Categoría asignada |
+| `confidence_score` | Float | Nivel de confianza de la clasificación (0.0 a 1.0) |
+| `is_automatic` | Boolean | Indica si la clasificación fue automática o manual |
+| `created_at` | DateTime (UTC) | Fecha de creación |
+
+## duel_rooms
+
+Estado de las partidas del modo online.
+
+| Columna | Tipo | Descripción |
+| --- | --- | --- |
+| `room_code` | String(10), clave primaria | Código de la sala |
+| `status` | String | Estado de la sala: `waiting`, `playing` o `finished` |
+| `player1_name`, `player1_avatar` | String | Datos del jugador que creó la sala |
+| `player2_name`, `player2_avatar` | String, opcional | Datos del jugador que se unió |
+| `current_turn` | Integer | Jugador que tiene el turno |
+| `question_index` | Integer | Posición de la pregunta actual en el lote |
+| `p1_score`, `p2_score` | Integer | Puntaje de cada jugador |
+| `questions_data` | JSON | Lote de preguntas asignado al duelo |
+| `winner` | String, opcional | Ganador al terminar la partida |
+| `created_at` | DateTime | Fecha de creación de la sala |
+
+## Migraciones
+
+Usa Alembic para generar y aplicar cambios en el esquema:
+
+```bash
+alembic revision --autogenerate -m "schema"
+alembic upgrade head
+```

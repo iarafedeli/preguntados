@@ -1,0 +1,91 @@
+---
+title: "Arquitectura"
+description: "Arquitectura de Sistema Preguntados: frontend React con Vite y TypeScript, backend FastAPI, persistencia en PostgreSQL y modo offline con preguntas simuladas."
+---
+
+Sistema Preguntados separa el cliente y el servidor en dos proyectos:
+
+- **Frontend**: una SPA en React que gestiona las pantallas, los turnos y la comunicación con la API.
+- **Backend**: un microservicio REST en FastAPI que expone preguntas, categorías y salas de duelo, y persiste los datos en PostgreSQL.
+
+## Stack tecnológico
+
+| Componente | Versión | Función |
+| --- | --- | --- |
+| React | ^18.3.1 | Librería de interfaz basada en componentes |
+| TypeScript | ^5.4.5 | Tipado estático y contratos del dominio |
+| Vite | ^5.3.1 | Bundler y servidor de desarrollo, con proxy HTTP para `/questions` |
+| Tailwind CSS | ^3.4.4 | Estilos utilitarios y diseño responsivo, procesado con PostCSS y Autoprefixer |
+| Lucide React | ^1.16.0 | Iconografía vectorial del HUD y los botones |
+| Vitest y React Testing Library | ^1.6.0 / ^16.0.1 | Pruebas unitarias y de integración |
+| FastAPI | 1.0.0 | Framework backend asíncrono, en el puerto 8000 |
+| SQLAlchemy | No especificada | ORM para los modelos `questions`, `categorizations` y `duel_rooms` |
+| PostgreSQL | No especificada | Base de datos relacional transaccional |
+| Alembic | No especificada | Migraciones del esquema de la base de datos |
+
+## Estructura del proyecto
+
+| Carpeta | Contenido |
+| --- | --- |
+| `src/` | Código fuente de la aplicación cliente en React |
+| `src/screens/` | Pantallas de la máquina de estados del juego |
+| `src/components/` | Componentes reutilizables: `Roulette`, `QuestionCard`, `PlayerHUD` y `ErrorBanner` |
+| `src/services/` | Comunicación HTTP, traducción y audio: `onlineDuelService.ts`, `mockQuestions.ts` y `soundService.ts` |
+| `src/types/` | Tipos y contratos de TypeScript del dominio (`game.ts`) |
+| `openspec/` | Especificaciones de arquitectura y contratos formales |
+| `Backend-Preguntados/app/` | Microservicio FastAPI: modelos SQLAlchemy, rutas REST y migraciones Alembic |
+
+## Frontend
+
+React 18 se inicializa desde `src/main.tsx`, que monta el componente raíz `App.tsx`.
+
+### Máquina de estados
+
+La navegación no usa librerías externas de gestión de estado. `App.tsx` implementa una máquina de estados basada en el tipo `GameScreenType`, una unión discriminada de TypeScript. `App.tsx` también centraliza el control de turnos, los jugadores, las coronas por categoría y el estado de las salas online.
+
+```typescript
+export type GameScreenType =
+  | 'setup'
+  | 'roulette'
+  | 'question'
+  | 'duel-setup'
+  | 'duel-question'
+  | 'online-setup'
+  | 'online-waiting'
+  | 'online-result';
+```
+
+### Capa de comunicación
+
+Los servicios `onlineDuelService.ts` y `mockQuestions.ts` usan la API nativa `fetch`. El frontend no depende de librerías HTTP externas.
+
+La URL del backend se lee de las variables de entorno `VITE_API_URL` o `VITE_API_BASE_URL`. Si no están definidas, el cliente usa `http://localhost:8000`. Consulta [Instalación y entornos](/instalacion) para configurarlas.
+
+## Modo offline con preguntas simuladas
+
+Cuando el backend no está disponible, el juego sigue funcionando. La función `fetchQuestionByApiOrMock` aplica este respaldo:
+
+1. Pide una pregunta al backend en `/questions/category/{category}`.
+2. Si el backend responde con un error HTTP, la red falla, se agota el tiempo de espera o la lista llega vacía, la función usa el conjunto local `MOCK_QUESTIONS`.
+3. Si una pregunta está en otro idioma, el cliente la traduce en tiempo real con la API pública de MyMemory antes de mostrarla.
+
+## Backend
+
+El backend es un microservicio FastAPI que escucha en el puerto 8000. FastAPI valida los datos de entrada con esquemas Pydantic, y SQLAlchemy ejecuta las consultas sobre PostgreSQL. Consulta los endpoints en [API REST](/api-rest) y las tablas en [Modelo de datos](/modelo-de-datos).
+
+## Flujo de comunicación
+
+1. El usuario interactúa con la interfaz de React.
+2. La pantalla invoca un servicio (`onlineDuelService` o `mockQuestions`).
+3. El servicio envía una petición HTTP REST a FastAPI en el puerto 8000.
+4. FastAPI valida los esquemas con Pydantic.
+5. SQLAlchemy ejecuta las consultas sobre PostgreSQL.
+
+### Validación de respuestas en duelo online
+
+1. El jugador elige una opción en la interfaz.
+2. El cliente ejecuta `submitAnswer()`, que envía un `POST` a `/duel/rooms/{code}/answer`.
+3. FastAPI comprueba que la sala exista, que su estado sea `playing` y que el turno corresponda al jugador que responde.
+4. FastAPI compara la respuesta con la respuesta correcta y actualiza los puntajes y el turno de la sala.
+5. SQLAlchemy confirma la transacción en PostgreSQL y FastAPI devuelve `{ room, is_correct, correct_answer }`.
+6. El cliente que respondió muestra el resultado. El otro jugador recibe el avance en su siguiente ciclo de polling.

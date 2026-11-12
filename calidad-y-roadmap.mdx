@@ -1,0 +1,41 @@
+---
+title: "Calidad y roadmap"
+description: "Pruebas automatizadas, metodología OpenSpec, limitaciones conocidas y próximos pasos técnicos de Sistema Preguntados."
+---
+
+## Pruebas automatizadas
+
+El proyecto usa Vitest y React Testing Library. Ejecuta la suite con `npm test`.
+
+Las pruebas priorizan la capa de transporte (`onlineDuelService.test.ts`). El objetivo de cobertura es el 70% del código. Las pruebas validan, entre otros escenarios:
+
+- La creación de salas y la incorporación del oponente con respuestas de red simuladas.
+- El manejo de errores HTTP 500 y fallos de conexión.
+- El aislamiento de las llamadas mediante la interceptación de `global.fetch`.
+
+## Metodología OpenSpec
+
+El equipo sigue un desarrollo guiado por especificaciones (SDD, Spec-Driven Development). La carpeta `openspec/` define los contratos formales de pantallas, esquemas de intercambio y comportamiento antes de escribir el código.
+
+El proyecto incluye un arnés de gobernanza para agentes automatizados (`AGENTS.md` y la carpeta `harness/`). Este arnés asegura la correspondencia entre los tipos de TypeScript del cliente y los esquemas Pydantic del servidor.
+
+## Limitaciones y roadmap
+
+### Polling frente a WebSockets
+
+Hoy, el modo online sincroniza las salas consultando `GET /duel/rooms/{code}` de forma periódica. Estas peticiones repetidas generan sobrecarga en la red y en el backend.
+
+El equipo recomienda implementar un canal WebSocket bidireccional (`/ws/duel/{code}`) para sincronizar los turnos en tiempo real.
+
+### Limpieza de salas inactivas
+
+La tabla `duel_rooms` acumula partidas terminadas o abandonadas. El equipo recomienda programar una tarea en segundo plano que elimine las salas con más de 24 horas de inactividad:
+
+```sql
+DELETE FROM duel_rooms
+WHERE status = 'waiting' AND created_at < NOW() - INTERVAL '24 hours';
+```
+
+### Modo offline
+
+El respaldo con `MOCK_QUESTIONS` y la traducción dinámica mantienen el juego disponible cuando el backend o la base de datos no responden. El equipo considera este mecanismo un hallazgo positivo y planea mantenerlo.

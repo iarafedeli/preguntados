@@ -1,0 +1,57 @@
+---
+title: "API REST"
+description: "Endpoints del backend FastAPI de Sistema Preguntados para preguntas, categorías, estadísticas y salas de duelo online."
+---
+
+El backend FastAPI escucha en el puerto 8000 (por defecto, `http://localhost:8000`). Todas las respuestas usan JSON codificado en UTF-8.
+
+## Estado del servicio
+
+| Método | Ruta | Entrada | Respuesta |
+| --- | --- | --- | --- |
+| `GET` | `/` | Ninguna | `200`: metadatos del servicio y lista de endpoints (healthcheck) |
+
+## Preguntas
+
+| Método | Ruta | Entrada | Respuesta |
+| --- | --- | --- | --- |
+| `POST` | `/questions` | Cuerpo JSON `QuestionCreate` | `201`: la pregunta creada |
+| `GET` | `/questions` | Query: `skip`, `limit` | `200`: lista paginada de preguntas |
+| `GET` | `/questions/{question_id}` | Path: `question_id` | `200`: la pregunta con su categorización. `404` si no existe |
+| `GET` | `/questions/category/{category}` | Path: `category`. Query: `skip`, `limit` | `200`: preguntas de la categoría |
+
+## Categorías y estadísticas
+
+| Método | Ruta | Entrada | Respuesta |
+| --- | --- | --- | --- |
+| `GET` | `/stats` | Ninguna | `200`: totales y conteo de preguntas por categoría |
+| `GET` | `/categories` | Ninguna | `200`: lista de categorías temáticas |
+| `GET` | `/categories/stats` | Ninguna | `200`: comparación entre categorizaciones automáticas (IA) y manuales |
+| `PUT` | `/categorizations/{id}` | Path: `id`. Cuerpo JSON `CategorizationUpdate` | `200`: la categorización actualizada. `404` si no existe |
+
+## Salas de duelo online
+
+| Método | Ruta | Entrada | Respuesta |
+| --- | --- | --- | --- |
+| `POST` | `/duel/rooms` | Cuerpo JSON `RoomCreate` | `201`: la sala (`DuelRoom`) con su `room_code` de 6 caracteres |
+| `POST` | `/duel/rooms/{code}/join` | Path: `code`. Cuerpo JSON `RoomJoin` | `200`: la sala en estado `playing`. `400` si no se puede unir |
+| `GET` | `/duel/rooms/{code}` | Path: `code` | `200`: el estado actual de la sala. `404` si no existe |
+| `POST` | `/duel/rooms/{code}/answer` | Path: `code`. Cuerpo JSON `AnswerSubmit` | `200`: `{ room, is_correct, correct_answer }`. `400` si la respuesta no es válida |
+
+El cliente consulta `GET /duel/rooms/{code}` de forma periódica (polling) para sincronizar la sala de espera y los turnos.
+
+Al recibir una respuesta en `POST /duel/rooms/{code}/answer`, el backend:
+
+- Devuelve `400 Bad Request` si la sala no existe o si su estado es `finished`.
+- Rechaza la respuesta si el jugador no tiene el turno.
+- Suma el punto al jugador si acierta y avanza la pregunta o alterna el turno.
+- Cambia el estado a `finished` y registra el ganador al llegar al límite de preguntas del duelo.
+
+## CORS
+
+El backend configura `CORSMiddleware` con `allow_origin_regex`. La política acepta peticiones desde:
+
+- `http://localhost` y `http://127.0.0.1`, en cualquier puerto.
+- Direcciones de la red local `192.168.x.x`, para partidas entre dispositivos de la misma red.
+
+Los métodos permitidos son `GET`, `POST`, `PUT`, `DELETE` y `OPTIONS`, con todos los encabezados.
